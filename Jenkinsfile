@@ -48,10 +48,21 @@ pipeline {
                 bat "docker rm %FRONTEND_CONTAINER% 2>nul || echo No frontend container to remove"
 
                 // Check for processes using the backend port and kill them
+                bat "echo Checking for processes using port %BACKEND_PORT%..."
                 bat "powershell -Command \"Get-NetTCPConnection -LocalPort %BACKEND_PORT% -ErrorAction SilentlyContinue | ForEach-Object { Stop-Process -Id $_.OwningProcess -Force -ErrorAction SilentlyContinue }\" || echo No process using port %BACKEND_PORT%"
 
+                // Check for processes using the frontend port and kill them
+                bat "echo Checking for processes using port %FRONTEND_PORT%..."
+                bat "powershell -Command \"Get-NetTCPConnection -LocalPort %FRONTEND_PORT% -ErrorAction SilentlyContinue | ForEach-Object { Stop-Process -Id $_.OwningProcess -Force -ErrorAction SilentlyContinue }\" || echo No process using port %FRONTEND_PORT%"
+
                 // Wait for ports to be released
+                bat "echo Waiting for ports to be released..."
                 bat "timeout /t 5"
+
+                // Verify ports are free
+                bat "echo Verifying ports are free..."
+                bat "powershell -Command \"if ((Get-NetTCPConnection -LocalPort %BACKEND_PORT% -ErrorAction SilentlyContinue).Count -gt 0) { Write-Error 'Port %BACKEND_PORT% is still in use!' -ErrorAction Stop } else { Write-Host 'Port %BACKEND_PORT% is free' }\""
+                bat "powershell -Command \"if ((Get-NetTCPConnection -LocalPort %FRONTEND_PORT% -ErrorAction SilentlyContinue).Count -gt 0) { Write-Error 'Port %FRONTEND_PORT% is still in use!' -ErrorAction Stop } else { Write-Host 'Port %FRONTEND_PORT% is free' }\""
             }
         }
 
