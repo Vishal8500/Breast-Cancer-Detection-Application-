@@ -34,8 +34,6 @@ jobs:
 
       - name: Deploy Backend to Server
         run: |
-          # You can deploy your backend Docker container using your cloud service (AWS, Azure, etc.) 
-          # or any server where you have access.
           docker pull ${{ secrets.DOCKERHUB_USERNAME }}/flask-backend
           docker stop flask-backend || true && docker rm flask-backend || true
           docker run -d -p 5000:5000 --name flask-backend ${{ secrets.DOCKERHUB_USERNAME }}/flask-backend
@@ -43,8 +41,8 @@ jobs:
       - name: Deploy Frontend to Vercel
         uses: amondnet/vercel-action@v20
         with:
-          vercel_token: ${{ secrets.VERCEL_TOKEN }}
-          vercel_project_id: ${{ secrets.VERCEL_PROJECT_ID }}
-          vercel_org_id: ${{ secrets.VERCEL_ORG_ID }}
+          vercel-token: ${{ secrets.VERCEL_TOKEN }}
+          vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
+          vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
