@@ -1,12 +1,20 @@
 pipeline {
     agent any
 
+<<<<<<< HEAD
     stages {
         stage('Clone') {
             steps {
                 git 'https://github.com/Vishal8500/Breast-Cancer-Detection-Application.git'
             }
         }
+=======
+    stage('Clone') {
+    steps {
+        git url: 'https://github.com/Vishal8500/Breast-Cancer-Detection-Application.git', branch: 'main'
+    }
+}
+>>>>>>> 5f0bc6a08b92e52b0df5cca28ef2952a611678dd
 
         stage('Build Backend') {
             steps {
@@ -54,4 +62,7 @@ pipeline {
         }
     }
 }
+<<<<<<< HEAD
 
+=======
+>>>>>>> 5f0bc6a08b92e52b0df5cca28ef2952a611678dd
