@@ -1,13 +1,11 @@
 pipeline {
     agent any
 
-    stages {
-        stage('Clone') {
-            steps {
-                // Clone the specific repository
-                git 'https://github.com/Vishal8500/Breast-Cancer-Detection-Application.git'
-            }
-        }
+    stage('Clone') {
+    steps {
+        git url: 'https://github.com/Vishal8500/Breast-Cancer-Detection-Application.git', branch: 'main'
+    }
+}
 
         stage('Build Backend') {
             steps {
