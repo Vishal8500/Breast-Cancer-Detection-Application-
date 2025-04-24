@@ -26,10 +26,10 @@ function App() {
   };
 
   // Use different URLs based on environment
-  // When running in browser, use localhost:5001
+  // When running in browser, use localhost:5002
   // When running in Docker, the nginx proxy will handle the routing
   const API_URL = window.location.hostname === 'localhost'
-    ? "http://localhost:5001"
+    ? "http://localhost:5002"
     : "/";  // Use relative URL for Docker environment
 
   const handleSubmit = async (e) => {

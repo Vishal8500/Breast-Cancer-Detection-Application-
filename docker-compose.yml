@@ -4,7 +4,7 @@ services:
       context: ./BACKEND
       dockerfile: Dockerfile
     ports:
-      - "5001:5000"
+      - "5002:5000"  # Using port 5002 to avoid conflicts
     environment:
       - MODEL_PATH=/app/my_model3.h5
     logging:
