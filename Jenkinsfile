@@ -4,9 +4,8 @@ pipeline {
     stages {
         stage('Clone') {
             steps {
-                // The checkout step is not needed if you're using Pipeline from SCM
-                // Jenkins will automatically clone the repository
-                checkout scm
+                // Clone the specific repository
+                git 'https://github.com/Vishal8500/Breast-Cancer-Detection-Application.git'
             }
         }
 
