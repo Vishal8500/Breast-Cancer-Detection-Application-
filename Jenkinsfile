@@ -27,15 +27,33 @@ pipeline {
         stage('Deploy') {
             steps {
                 sh '''
-                    docker stop flask-backend || true
-                    docker rm flask-backend || true
-                    docker stop react-frontend || true
-                    docker rm react-frontend || true
+                    # Stop and remove any existing containers
+                    docker ps -q --filter "name=flask-backend" | grep -q . && docker stop flask-backend || true
+                    docker ps -aq --filter "name=flask-backend" | grep -q . && docker rm flask-backend || true
+                    docker ps -q --filter "name=react-frontend" | grep -q . && docker stop react-frontend || true
+                    docker ps -aq --filter "name=react-frontend" | grep -q . && docker rm react-frontend || true
                     
+                    # Kill any process using port 5001
+                    lsof -ti:5001 | xargs -r kill -9 || true
+                    
+                    # Wait a moment for ports to be released
+                    sleep 5
+                    
+                    # Start the containers
                     docker run -d -p 5001:5000 --name flask-backend flask-app
                     docker run -d -p 8080:80 --name react-frontend react-app
                 '''
             }
+        }
+    }
+    
+    post {
+        failure {
+            sh '''
+                # Cleanup on failure
+                docker ps -q --filter "name=flask-backend" | grep -q . && docker stop flask-backend || true
+                docker ps -q --filter "name=react-frontend" | grep -q . && docker stop react-frontend || true
+            '''
         }
     }
 }
