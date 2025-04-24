@@ -1,0 +1,18 @@
+version: '3.8'
+
+services:
+  backend:
+    image: ${DOCKERHUB_USERNAME}/cancer-detection-backend:latest
+    restart: always
+    environment:
+      - MODEL_PATH=/app/my_model3.h5
+    ports:
+      - "5002:5000"
+
+  frontend:
+    image: ${DOCKERHUB_USERNAME}/cancer-detection-frontend:latest
+    restart: always
+    ports:
+      - "80:80"
+    depends_on:
+      - backend

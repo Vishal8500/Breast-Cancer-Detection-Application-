@@ -32,6 +32,16 @@ jobs:
           docker build -t ${{ secrets.DOCKERHUB_USERNAME }}/react-frontend ./my-app
           docker push ${{ secrets.DOCKERHUB_USERNAME }}/react-frontend
 
+      - name: Set up SSH key
+        run: |
+          mkdir -p ~/.ssh
+          echo "$SERVER_SSH_KEY" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan -t rsa ${{ secrets.SERVER_HOST }} >> ~/.ssh/known_hosts
+        env:
+          SERVER_SSH_KEY: ${{ secrets.SERVER_SSH_KEY }}
+          SERVER_HOST: ${{ secrets.SERVER_HOST }}
+
       - name: Deploy to server via SSH
         uses: appleboy/ssh-action@v1.0.0
         with:
@@ -39,9 +49,14 @@ jobs:
           username: ${{ secrets.SERVER_USERNAME }}
           key: ${{ secrets.SERVER_SSH_KEY }}
           script: |
+            # Pull the latest images from Docker Hub
             docker pull ${{ secrets.DOCKERHUB_USERNAME }}/flask-backend
             docker pull ${{ secrets.DOCKERHUB_USERNAME }}/react-frontend
+
+            # Stop and remove existing containers if any
             docker stop flask-backend || true && docker rm flask-backend || true
             docker stop react-frontend || true && docker rm react-frontend || true
+
+            # Run the backend and frontend containers
             docker run -d -p 5000:5000 --name flask-backend ${{ secrets.DOCKERHUB_USERNAME }}/flask-backend
             docker run -d -p 3000:80 --name react-frontend ${{ secrets.DOCKERHUB_USERNAME }}/react-frontend
