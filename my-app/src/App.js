@@ -30,7 +30,7 @@ function App() {
   // When running in Docker, the nginx proxy will handle the routing
   const API_URL = window.location.hostname === 'localhost'
     ? "http://localhost:5001"
-    : process.env.REACT_APP_API_URL || "/";
+    : "/";  // Use relative URL for Docker environment
 
   const handleSubmit = async (e) => {
     e.preventDefault();
