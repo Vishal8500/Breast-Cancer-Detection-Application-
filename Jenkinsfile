@@ -99,7 +99,7 @@ pipeline {
                     try {
                         echo "Starting application container on port ${APP_PORT}..."
                         bat """
-                            docker run -d --name ${APP_CONTAINER} -p ${APP_PORT}:80 ${APP_IMAGE}
+                            docker run -d --name ${APP_CONTAINER} -p ${APP_PORT}:5000 ${APP_IMAGE}
                             ping -n 11 127.0.0.1 >nul
                             docker inspect -f "{{.State.Running}}" ${APP_CONTAINER} | findstr true || exit 1
                         """
