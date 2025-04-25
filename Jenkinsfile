@@ -6,8 +6,10 @@ pipeline {
         APP_CONTAINER = 'full-stack-app'
         // Define image name
         APP_IMAGE = 'full-stack-app'
-        // Define port
-        APP_PORT = '8080'
+        // Define default port
+        DEFAULT_PORT = '8080'
+        // Define port variable that will be dynamically assigned
+        APP_PORT = ''
     }
 
     stages {
@@ -33,20 +35,21 @@ pipeline {
             steps {
                 script {
                     try {
+                        // Clean up existing container and release the port if already in use
                         bat """
                             echo Cleaning up existing container...
                             docker stop ${APP_CONTAINER} 2>nul || echo No container to stop
                             docker rm ${APP_CONTAINER} 2>nul || echo No container to remove
 
-                            echo Releasing port ${APP_PORT}...
+                            echo Releasing port ${DEFAULT_PORT}...
                             powershell -Command "
-                                Get-NetTCPConnection -LocalPort ${APP_PORT} -ErrorAction SilentlyContinue |
+                                Get-NetTCPConnection -LocalPort ${DEFAULT_PORT} -ErrorAction SilentlyContinue |
                                 ForEach-Object {
                                     try {
                                         Stop-Process -Id $_.OwningProcess -Force -ErrorAction SilentlyContinue
-                                        Write-Host 'Stopped process using port ${APP_PORT}'
+                                        Write-Host 'Stopped process using port ${DEFAULT_PORT}'
                                     } catch {
-                                        Write-Host 'No process using port ${APP_PORT}'
+                                        Write-Host 'No process using port ${DEFAULT_PORT}'
                                     }
                                 }
                             "
@@ -60,13 +63,42 @@ pipeline {
                 }
             }
         }
-        
+
+        stage('Assign Available Port') {
+            steps {
+                script {
+                    // Dynamically check and assign an available port
+                    try {
+                        echo "Checking for available port..."
+                        def availablePort = sh(script: """
+                            for /l %%x in (8080, 1, 8090) do (
+                                netstat -an | findstr /c:"%%x" >nul
+                                if %errorlevel% neq 0 (
+                                    echo %%x
+                                    exit /b
+                                )
+                            )
+                            echo No available ports found
+                        """, returnStdout: true).trim()
+                        if (availablePort) {
+                            echo "Assigning port ${availablePort} for the application."
+                            APP_PORT = availablePort
+                        } else {
+                            error "No available ports found in the range 8080-8090"
+                        }
+                    } catch (Exception e) {
+                        error "Failed to assign an available port: ${e.getMessage()}"
+                    }
+                }
+            }
+        }
+
         stage('Deploy Container') {
             steps {
                 script {
                     try {
+                        echo "Starting application container on port ${APP_PORT}..."
                         bat """
-                            echo Starting application container...
                             docker run -d --name ${APP_CONTAINER} -p ${APP_PORT}:80 ${APP_IMAGE}
                             ping -n 11 127.0.0.1 >nul
                             docker inspect -f "{{.State.Running}}" ${APP_CONTAINER} | findstr true || exit 1
@@ -82,8 +114,8 @@ pipeline {
             steps {
                 script {
                     try {
+                        echo "Verifying application health on port ${APP_PORT}..."
                         bat """
-                            echo Verifying application health...
                             for /l %%x in (1, 1, 6) do (
                                 curl -s -f http://localhost:${APP_PORT} && exit 0
                                 ping -n 6 127.0.0.1 >nul
