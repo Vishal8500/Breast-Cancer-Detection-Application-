@@ -2,15 +2,12 @@ pipeline {
     agent any
 
     environment {
-        // Define container names
-        BACKEND_CONTAINER = 'flask-backend'
-        FRONTEND_CONTAINER = 'react-frontend'
-        // Define image names
-        BACKEND_IMAGE = 'flask-app'
-        FRONTEND_IMAGE = 'react-app'
-        // Define ports
-        BACKEND_PORT = '5005'   // Changed to avoid conflicts with 5002
-        FRONTEND_PORT = '8080'
+        // Define container name
+        APP_CONTAINER = 'full-stack-app'
+        // Define image name
+        APP_IMAGE = 'full-stack-app'
+        // Define port
+        APP_PORT = '8080'
     }
 
     stages {
@@ -20,33 +17,13 @@ pipeline {
             }
         }
 
-        stage('Build Images') {
-            parallel {
-                stage('Build Backend') {
-                    steps {
-                        script {
-                            dir('BACKEND') {
-                                try {
-                                    bat "docker build -t %BACKEND_IMAGE% ."
-                                } catch (Exception e) {
-                                    error "Backend build failed: ${e.getMessage()}"
-                                }
-                            }
-                        }
-                    }
-                }
-
-                stage('Build Frontend') {
-                    steps {
-                        script {
-                            dir('my-app') {
-                                try {
-                                    bat "docker build -t %FRONTEND_IMAGE% ."
-                                } catch (Exception e) {
-                                    error "Frontend build failed: ${e.getMessage()}"
-                                }
-                            }
-                        }
+        stage('Build Image') {
+            steps {
+                script {
+                    try {
+                        bat "docker build -t ${APP_IMAGE} ."
+                    } catch (Exception e) {
+                        error "Build failed: ${e.getMessage()}"
                     }
                 }
             }
@@ -57,26 +34,24 @@ pipeline {
                 script {
                     try {
                         bat """
-                            echo Cleaning up existing containers...
-                            docker stop %BACKEND_CONTAINER% %FRONTEND_CONTAINER% 2>nul || echo No containers to stop
-                            docker rm %BACKEND_CONTAINER% %FRONTEND_CONTAINER% 2>nul || echo No containers to remove
+                            echo Cleaning up existing container...
+                            docker stop ${APP_CONTAINER} 2>nul || echo No container to stop
+                            docker rm ${APP_CONTAINER} 2>nul || echo No container to remove
 
-                            echo Releasing ports %BACKEND_PORT% and %FRONTEND_PORT%...
+                            echo Releasing port ${APP_PORT}...
                             powershell -Command "
-                                foreach ($port in @('%BACKEND_PORT%', '%FRONTEND_PORT%')) {
-                                    Get-NetTCPConnection -LocalPort $port -ErrorAction SilentlyContinue |
-                                    ForEach-Object {
-                                        try {
-                                            Stop-Process -Id $_.OwningProcess -Force -ErrorAction SilentlyContinue
-                                            Write-Host \\"Stopped process using port $port\\"
-                                        } catch {
-                                            Write-Host \\"No process using port $port\\"
-                                        }
+                                Get-NetTCPConnection -LocalPort ${APP_PORT} -ErrorAction SilentlyContinue |
+                                ForEach-Object {
+                                    try {
+                                        Stop-Process -Id $_.OwningProcess -Force -ErrorAction SilentlyContinue
+                                        Write-Host 'Stopped process using port ${APP_PORT}'
+                                    } catch {
+                                        Write-Host 'No process using port ${APP_PORT}'
                                     }
                                 }
                             "
 
-                            echo Waiting for ports to release...
+                            echo Waiting for port to release...
                             ping -n 6 127.0.0.1 >nul
                         """
                     } catch (Exception e) {
@@ -85,25 +60,16 @@ pipeline {
                 }
             }
         }
-
-        stage('Deploy Containers') {
+        
+        stage('Deploy Container') {
             steps {
                 script {
                     try {
-                        // Deploy backend
                         bat """
-                            echo Starting backend container...
-                            docker run -d --name %BACKEND_CONTAINER% -p %BACKEND_PORT%:5000 %BACKEND_IMAGE%
+                            echo Starting application container...
+                            docker run -d --name ${APP_CONTAINER} -p ${APP_PORT}:80 ${APP_IMAGE}
                             ping -n 11 127.0.0.1 >nul
-                            docker inspect -f "{{.State.Running}}" %BACKEND_CONTAINER% | findstr true || exit 1
-                        """
-
-                        // Deploy frontend
-                        bat """
-                            echo Starting frontend container...
-                            docker run -d --name %FRONTEND_CONTAINER% -p %FRONTEND_PORT%:80 %FRONTEND_IMAGE%
-                            ping -n 11 127.0.0.1 >nul
-                            docker inspect -f "{{.State.Running}}" %FRONTEND_CONTAINER% | findstr true || exit 1
+                            docker inspect -f "{{.State.Running}}" ${APP_CONTAINER} | findstr true || exit 1
                         """
                     } catch (Exception e) {
                         error "Deployment failed: ${e.getMessage()}"
@@ -112,27 +78,17 @@ pipeline {
             }
         }
 
-        stage('Verify Services') {
+        stage('Verify Service') {
             steps {
                 script {
                     try {
                         bat """
-                            echo Verifying backend health...
+                            echo Verifying application health...
                             for /l %%x in (1, 1, 6) do (
-                                curl -s -f http://localhost:%BACKEND_PORT%/health && exit 0
+                                curl -s -f http://localhost:${APP_PORT} && exit 0
                                 ping -n 6 127.0.0.1 >nul
                             )
-                            echo Backend health check failed!
-                            exit 1
-                        """
-
-                        bat """
-                            echo Verifying frontend health...
-                            for /l %%x in (1, 1, 6) do (
-                                curl -s -f http://localhost:%FRONTEND_PORT% && exit 0
-                                ping -n 6 127.0.0.1 >nul
-                            )
-                            echo Frontend health check failed!
+                            echo Health check failed!
                             exit 1
                         """
                     } catch (Exception e) {
@@ -146,7 +102,7 @@ pipeline {
     post {
         success {
             script {
-                bat "echo Deployment successful! Services are running."
+                bat "echo Deployment successful! Service is running."
                 bat "docker ps"
             }
         }
@@ -155,8 +111,8 @@ pipeline {
             script {
                 bat """
                     echo Cleaning up resources due to failure...
-                    docker stop %BACKEND_CONTAINER% %FRONTEND_CONTAINER% 2>nul || echo No containers to stop
-                    docker rm %BACKEND_CONTAINER% %FRONTEND_CONTAINER% 2>nul || echo No containers to remove
+                    docker stop ${APP_CONTAINER} 2>nul || echo No container to stop
+                    docker rm ${APP_CONTAINER} 2>nul || echo No container to remove
                     docker ps -a
                 """
             }
@@ -172,4 +128,3 @@ pipeline {
         }
     }
 }
-
