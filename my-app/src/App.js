@@ -39,7 +39,7 @@ function App() {
     try {
       setIsLoading(true);
       setErrorMessage("");
-      
+
       const apiUrl = '/predict';
       console.log("Sending request to:", apiUrl);
 
@@ -58,7 +58,7 @@ function App() {
     } catch (error) {
       console.error("Error details:", error);
       setErrorMessage(
-        error.response 
+        error.response
           ? `Server error: ${error.response.data.error || 'Unknown error'}`
           : "Unable to connect to the server. Please try again later."
       );
@@ -216,7 +216,3 @@ if (typeof document !== "undefined") {
 }
 
 export default App;
-
-
-
-
