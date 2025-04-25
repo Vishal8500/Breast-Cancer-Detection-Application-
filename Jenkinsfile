@@ -3,12 +3,12 @@ pipeline {
 
     environment {
         // Define container name
-        APP_CONTAINER = 'full-stack-app'
+        APP_CONTAINER = 'breast-cancer-app'
         // Define image name
-        APP_IMAGE = 'full-stack-app'
+        APP_IMAGE = 'breast-cancer-detection-app'
         // Define default port
-        DEFAULT_PORT = '8080'
-        // Define port variable that will be dynamically assigned
+        DEFAULT_PORT = '5000'
+        // Define port variable to be dynamically assigned
         APP_PORT = ''
     }
 
@@ -35,7 +35,6 @@ pipeline {
             steps {
                 script {
                     try {
-                        // Clean up existing container and release the port if already in use
                         bat """
                             echo Cleaning up existing container...
                             docker stop ${APP_CONTAINER} 2>nul || echo No container to stop
@@ -67,11 +66,11 @@ pipeline {
         stage('Assign Available Port') {
             steps {
                 script {
-                    // Dynamically check and assign an available port
+                    // Dynamically check for available ports in a range
                     try {
                         echo "Checking for available port..."
                         def availablePort = sh(script: """
-                            for /l %%x in (8080, 1, 8090) do (
+                            for /l %%x in (5000, 1, 5090) do (
                                 netstat -an | findstr /c:"%%x" >nul
                                 if %errorlevel% neq 0 (
                                     echo %%x
@@ -80,11 +79,12 @@ pipeline {
                             )
                             echo No available ports found
                         """, returnStdout: true).trim()
+                        
                         if (availablePort) {
                             echo "Assigning port ${availablePort} for the application."
                             APP_PORT = availablePort
                         } else {
-                            error "No available ports found in the range 8080-8090"
+                            error "No available ports found in the range 5000-5090"
                         }
                     } catch (Exception e) {
                         error "Failed to assign an available port: ${e.getMessage()}"
