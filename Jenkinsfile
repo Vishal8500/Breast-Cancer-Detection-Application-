@@ -2,14 +2,14 @@ pipeline {
     agent any
 
     environment {
-        // Define container names as variables for consistency
+        // Define container names
         BACKEND_CONTAINER = 'flask-backend'
         FRONTEND_CONTAINER = 'react-frontend'
         // Define image names
         BACKEND_IMAGE = 'flask-app'
         FRONTEND_IMAGE = 'react-app'
         // Define ports
-        BACKEND_PORT = '5002'
+        BACKEND_PORT = '5005'   // Changed to avoid conflicts with 5002
         FRONTEND_PORT = '8080'
     }
 
@@ -27,7 +27,7 @@ pipeline {
                         script {
                             dir('BACKEND') {
                                 try {
-                                    bat 'docker build -t %BACKEND_IMAGE% .'
+                                    bat "docker build -t %BACKEND_IMAGE% ."
                                 } catch (Exception e) {
                                     error "Backend build failed: ${e.getMessage()}"
                                 }
@@ -35,13 +35,13 @@ pipeline {
                         }
                     }
                 }
-                
+
                 stage('Build Frontend') {
                     steps {
                         script {
                             dir('my-app') {
                                 try {
-                                    bat 'docker build -t %FRONTEND_IMAGE% .'
+                                    bat "docker build -t %FRONTEND_IMAGE% ."
                                 } catch (Exception e) {
                                     error "Frontend build failed: ${e.getMessage()}"
                                 }
@@ -56,33 +56,31 @@ pipeline {
             steps {
                 script {
                     try {
-                        // Stop and remove existing containers
                         bat """
-                            docker stop %BACKEND_CONTAINER% %FRONTEND_CONTAINER% 2>nul || echo "No containers to stop"
-                            docker rm %BACKEND_CONTAINER% %FRONTEND_CONTAINER% 2>nul || echo "No containers to remove"
-                        """
+                            echo Cleaning up existing containers...
+                            docker stop %BACKEND_CONTAINER% %FRONTEND_CONTAINER% 2>nul || echo No containers to stop
+                            docker rm %BACKEND_CONTAINER% %FRONTEND_CONTAINER% 2>nul || echo No containers to remove
 
-                        // Kill processes using the ports (with error handling)
-                        bat """
+                            echo Releasing ports %BACKEND_PORT% and %FRONTEND_PORT%...
                             powershell -Command "
                                 foreach ($port in @('%BACKEND_PORT%', '%FRONTEND_PORT%')) {
-                                    Get-NetTCPConnection -LocalPort $port -ErrorAction SilentlyContinue | 
-                                    ForEach-Object { 
+                                    Get-NetTCPConnection -LocalPort $port -ErrorAction SilentlyContinue |
+                                    ForEach-Object {
                                         try {
                                             Stop-Process -Id $_.OwningProcess -Force -ErrorAction SilentlyContinue
+                                            Write-Host \\"Stopped process using port $port\\"
                                         } catch {
-                                            Write-Host "No process using port $port"
+                                            Write-Host \\"No process using port $port\\"
                                         }
                                     }
                                 }
                             "
-                        """
 
-                        // Wait for ports to be released
-                        bat "timeout /t 5 /nobreak"
+                            echo Waiting for ports to release...
+                            ping -n 6 127.0.0.1 >nul
+                        """
                     } catch (Exception e) {
                         echo "Warning during cleanup: ${e.getMessage()}"
-                        // Continue pipeline even if cleanup has warnings
                     }
                 }
             }
@@ -92,18 +90,20 @@ pipeline {
             steps {
                 script {
                     try {
-                        // Deploy backend with health check
+                        // Deploy backend
                         bat """
+                            echo Starting backend container...
                             docker run -d --name %BACKEND_CONTAINER% -p %BACKEND_PORT%:5000 %BACKEND_IMAGE%
-                            timeout /t 10 /nobreak
-                            docker inspect -f {{.State.Running}} %BACKEND_CONTAINER% | findstr true || exit 1
+                            ping -n 11 127.0.0.1 >nul
+                            docker inspect -f "{{{{.State.Running}}}}" %BACKEND_CONTAINER% | findstr true || exit 1
                         """
 
-                        // Deploy frontend with health check
+                        // Deploy frontend
                         bat """
+                            echo Starting frontend container...
                             docker run -d --name %FRONTEND_CONTAINER% -p %FRONTEND_PORT%:80 %FRONTEND_IMAGE%
-                            timeout /t 10 /nobreak
-                            docker inspect -f {{.State.Running}} %FRONTEND_CONTAINER% | findstr true || exit 1
+                            ping -n 11 127.0.0.1 >nul
+                            docker inspect -f "{{{{.State.Running}}}}" %FRONTEND_CONTAINER% | findstr true || exit 1
                         """
                     } catch (Exception e) {
                         error "Deployment failed: ${e.getMessage()}"
@@ -116,20 +116,23 @@ pipeline {
             steps {
                 script {
                     try {
-                        // More reliable health checks
                         bat """
+                            echo Verifying backend health...
                             for /l %%x in (1, 1, 6) do (
                                 curl -s -f http://localhost:%BACKEND_PORT%/health && exit 0
-                                timeout /t 5 /nobreak
+                                ping -n 6 127.0.0.1 >nul
                             )
+                            echo Backend health check failed!
                             exit 1
                         """
 
                         bat """
+                            echo Verifying frontend health...
                             for /l %%x in (1, 1, 6) do (
                                 curl -s -f http://localhost:%FRONTEND_PORT% && exit 0
-                                timeout /t 5 /nobreak
+                                ping -n 6 127.0.0.1 >nul
                             )
+                            echo Frontend health check failed!
                             exit 1
                         """
                     } catch (Exception e) {
@@ -147,9 +150,9 @@ pipeline {
                 bat "docker ps"
             }
         }
+
         failure {
             script {
-                // Cleanup on failure
                 bat """
                     echo Cleaning up resources due to failure...
                     docker stop %BACKEND_CONTAINER% %FRONTEND_CONTAINER% 2>nul || echo No containers to stop
@@ -158,8 +161,8 @@ pipeline {
                 """
             }
         }
+
         always {
-            // Workspace cleanup
             cleanWs(
                 cleanWhenNotBuilt: false,
                 deleteDirs: true,
