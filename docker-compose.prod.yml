@@ -6,8 +6,8 @@ services:
     restart: always
     environment:
       - MODEL_PATH=/app/my_model3.h5
-    ports:
-      - "5002:5000"
+    networks:
+      - app-network
 
   frontend:
     image: ${DOCKERHUB_USERNAME}/cancer-detection-frontend:latest
@@ -16,3 +16,9 @@ services:
       - "80:80"
     depends_on:
       - backend
+    networks:
+      - app-network
+
+networks:
+  app-network:
+    driver: bridge

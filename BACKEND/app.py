@@ -1,12 +1,12 @@
-import os
-import numpy as np
-import tensorflow as tf
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 from PIL import Image
+import numpy as np
+import tensorflow as tf
+import os
 
 app = Flask(__name__)
-CORS(app)
+CORS(app, resources={r"/predict": {"origins": "*"}})
 
 MODEL_PATH = os.environ.get("MODEL_PATH", "my_model3.h5")
 
@@ -25,8 +25,11 @@ def preprocess_image(image_file):
     img_array = np.expand_dims(img_array, axis=0)
     return img_array
 
-@app.route('/predict', methods=['POST'])
+@app.route('/predict', methods=['POST', 'OPTIONS'])
 def predict():
+    if request.method == 'OPTIONS':
+        return '', 204
+        
     try:
         if 'image' not in request.files:
             return jsonify({"error": "No image uploaded"}), 400
@@ -35,15 +38,17 @@ def predict():
         if file.filename == '':
             return jsonify({"error": "No selected image"}), 400
 
-        image_array = preprocess_image(file)
-
         if model is None:
             return jsonify({"error": "Model not loaded"}), 500
 
+        image_array = preprocess_image(file)
         prediction = model.predict(image_array)
         result = "Cancerous" if prediction[0][0] >= 0.5 else "Non-Cancerous"
         
-        return jsonify({"prediction": result})
+        return jsonify({
+            "prediction": result,
+            "confidence": float(prediction[0][0])
+        })
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500

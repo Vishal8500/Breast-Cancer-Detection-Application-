@@ -25,13 +25,6 @@ function App() {
     }
   };
 
-  // Use different URLs based on environment
-  // When running in browser, use localhost:5002
-  // When running in Docker, the nginx proxy will handle the routing
-  const API_URL = window.location.hostname === 'localhost'
-    ? "http://localhost:5002"
-    : "/";  // Use relative URL for Docker environment
-
   const handleSubmit = async (e) => {
     e.preventDefault();
 
@@ -45,22 +38,29 @@ function App() {
 
     try {
       setIsLoading(true);
-      console.log("Sending request to:", `${API_URL}/predict`);
+      setErrorMessage("");
+      
+      const apiUrl = '/predict';
+      console.log("Sending request to:", apiUrl);
 
-      // Using axios instead of fetch for the request
-      const response = await axios.post(`${API_URL}/predict`, formData, {
+      const response = await axios.post(apiUrl, formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
-          'Accept': 'application/json',
         },
+        timeout: 30000, // 30 second timeout
       });
 
-      console.log("Response data:", response.data);
-      setResult(response.data.prediction || "Unexpected response from server.");
+      if (response.data && response.data.prediction) {
+        setResult(response.data.prediction);
+      } else {
+        setErrorMessage("Received invalid response from server");
+      }
     } catch (error) {
-      console.error("Full error:", error);
+      console.error("Error details:", error);
       setErrorMessage(
-        "❌ Unable to connect to the server. Please ensure the backend is running."
+        error.response 
+          ? `Server error: ${error.response.data.error || 'Unknown error'}`
+          : "Unable to connect to the server. Please try again later."
       );
     } finally {
       setIsLoading(false);
@@ -216,4 +216,7 @@ if (typeof document !== "undefined") {
 }
 
 export default App;
+
+
+
 
