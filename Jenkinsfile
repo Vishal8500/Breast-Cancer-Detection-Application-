@@ -95,7 +95,7 @@ pipeline {
                             echo Starting backend container...
                             docker run -d --name %BACKEND_CONTAINER% -p %BACKEND_PORT%:5000 %BACKEND_IMAGE%
                             ping -n 11 127.0.0.1 >nul
-                            docker inspect -f "{{{{.State.Running}}}}" %BACKEND_CONTAINER% | findstr true || exit 1
+                            docker inspect -f "{{.State.Running}}" %BACKEND_CONTAINER% | findstr true || exit 1
                         """
 
                         // Deploy frontend
@@ -103,7 +103,7 @@ pipeline {
                             echo Starting frontend container...
                             docker run -d --name %FRONTEND_CONTAINER% -p %FRONTEND_PORT%:80 %FRONTEND_IMAGE%
                             ping -n 11 127.0.0.1 >nul
-                            docker inspect -f "{{{{.State.Running}}}}" %FRONTEND_CONTAINER% | findstr true || exit 1
+                            docker inspect -f "{{.State.Running}}" %FRONTEND_CONTAINER% | findstr true || exit 1
                         """
                     } catch (Exception e) {
                         error "Deployment failed: ${e.getMessage()}"
@@ -172,3 +172,4 @@ pipeline {
         }
     }
 }
+
