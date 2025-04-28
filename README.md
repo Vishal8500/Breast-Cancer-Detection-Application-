@@ -114,15 +114,9 @@ From real-time analysis to personalized risk assessments, HistoAI bridges the ga
 
 ---
 
-## License
-
-This project is licensed under the [MIT License](LICENSE).
-
----
-
 ## Contributors
 
-- [Your Name](https://github.com/your-username) - Developer
+- [Vishal](https://github.com/Vishal8500) - Developer
 - Open to contributions! Feel free to open an issue or a pull request.
 
 ---
