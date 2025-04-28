@@ -97,7 +97,7 @@ From real-time analysis to personalized risk assessments, HistoAI bridges the ga
 
 - React.js
 - Flask (Python)
-- Machine Learning (sklearn, pandas, etc.)
+- Deep Learning (ResNet50 used for model training)
 - Docker
 - Jenkins
 - Docker Compose
